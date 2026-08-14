@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 CONTRACTS_ROOT="${REPO_ROOT}/dabdub_contracts"
-ENV_EXAMPLE_PATH="${REPO_ROOT}/backend/.env.example"
+ENV_EXAMPLE_PATH="${CONTRACTS_ROOT}/contracts/payment_escrow/scripts/deployed-contract-ids.env"
 WASM_PATH="${WASM_PATH:-${CONTRACTS_ROOT}/target/wasm32v1-none/release/payment_escrow.wasm}"
 NETWORK="${NETWORK:-testnet}"
 
@@ -56,10 +56,7 @@ update_env_key() {
   local value="$2"
   local file="$3"
 
-  if [[ ! -f "${file}" ]]; then
-    echo "Env example file not found at ${file}" >&2
-    return 1
-  fi
+  touch "${file}"
 
   if rg "^${key}=" "${file}" >/dev/null 2>&1; then
     sed -i.bak "s|^${key}=.*|${key}=${value}|" "${file}"
@@ -73,7 +70,8 @@ update_env_key() {
 update_env_key "${ENV_KEY}" "${CONTRACT_ID}" "${ENV_EXAMPLE_PATH}"
 update_env_key "SOROBAN_ESCROW_CONTRACT_ID" "${CONTRACT_ID}" "${ENV_EXAMPLE_PATH}"
 
-echo "Updated ${ENV_EXAMPLE_PATH} with ${ENV_KEY} and SOROBAN_ESCROW_CONTRACT_ID."
+echo "Recorded ${ENV_EXAMPLE_PATH} with ${ENV_KEY} and SOROBAN_ESCROW_CONTRACT_ID."
+echo "Copy these values into the backend repo's .env before redeploying/restarting it."
 
 CONTRACT_ID="${CONTRACT_ID}" ESCROW_CONTRACT_ID="${CONTRACT_ID}" NETWORK="${NETWORK}" \
   "${SCRIPT_DIR}/init.sh"

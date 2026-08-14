@@ -36,17 +36,19 @@ bash dabdub_contracts/contracts/payment_escrow/scripts/deploy.sh
 1. Build the escrow wasm if needed.
 2. Deploy the contract.
 3. Capture the deployed contract ID.
-4. Persist contract ID keys in `backend/.env.example`.
+4. Persist contract ID keys in `deployed-contract-ids.env` (local to this script directory, gitignored).
 5. Call `init.sh` to initialize the contract.
+
+After deploying, copy the printed contract ID values into the backend repo's `.env` (this repo no longer contains the backend app).
 
 ## Rollback procedure
 
 Soroban contracts are immutable; rollback means switching consumers to a prior known-good contract ID.
 
-1. Retrieve the previous contract ID from git history (`backend/.env.example`).
-2. Update:
+1. Retrieve the previous contract ID from `deployed-contract-ids.env` or the backend repo's git history.
+2. Update, in the backend repo's `.env`:
    - `SOROBAN_ESCROW_CONTRACT_ID`
    - `SOROBAN_ESCROW_CONTRACT_ID_TESTNET` or `SOROBAN_ESCROW_CONTRACT_ID_MAINNET`
-3. Commit the config change.
+3. Commit the config change in the backend repo.
 4. Redeploy backend/services using the reverted contract ID.
 5. Verify read calls and event monitoring point to the reverted contract.

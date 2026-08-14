@@ -70,7 +70,7 @@ Note: In local dev, `STATUS_HTML` text blob may not load — the worker falls ba
 | Redis / Queue | `components.redis` | No — degraded only |
 | Background Jobs | `components.queue` | No — degraded only |
 
-Data comes from `GET /health/admin` which is defined in `backend/src/health/health.controller.ts`.
+Data comes from `GET /health/admin` which is defined in `src/health/health.controller.ts` in the `dupdap-backend` repo.
 
 ---
 

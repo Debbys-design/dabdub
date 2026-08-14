@@ -49,3 +49,6 @@ Thumbs.db
 
 # Misc
 *.local
+
+# Local deploy records (not committed; copy into consuming repos manually)
+deployed-contract-ids.env

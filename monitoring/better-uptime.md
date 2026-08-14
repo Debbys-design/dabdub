@@ -144,7 +144,7 @@ Add a heartbeat to verify the app is actively running cron jobs:
 3. Period: 5 minutes, Grace: 2 minutes
 4. Copy the heartbeat URL
 
-Then add a cron job in the NestJS app to ping it every 5 minutes (see `backend/src/cron/` for the cron infrastructure).
+Then add a cron job in the NestJS app to ping it every 5 minutes (see `src/cron/` in the `dupdap-backend` repo for the cron infrastructure).
 
 ```typescript
 // In a cron service
