@@ -23,7 +23,16 @@ pub struct MerchantRecord {
     pub name: String,
     pub status: MerchantStatus,
     pub kyc_verified: bool,
+    /// Negotiated fee rate for this merchant, in basis points (1/100th of a
+    /// percent). Defaults to `DEFAULT_FEE_BPS` at registration and can be
+    /// overridden per-merchant by the admin via `update_fee_tier`.
+    pub fee_bps: u32,
 }
+
+/// Default fee rate applied to newly registered merchants: 150 bps (1.5%).
+const DEFAULT_FEE_BPS: u32 = 150;
+/// Upper bound on the fee rate an admin can set for a merchant: 1000 bps (10%).
+const MAX_FEE_BPS: u32 = 1000;
 
 /// Storage keys used by the registry.
 #[contracttype]
@@ -65,6 +74,17 @@ struct AdminTransferredEvent {
     new_admin: Address,
 }
 
+#[contracttype]
+struct FeeTierUpdatedEvent {
+    merchant: Address,
+    fee_bps: u32,
+}
+
+#[contracttype]
+struct MerchantTerminatedEvent {
+    merchant: Address,
+}
+
 // ---------------------------------------------------------------------------
 // Contract
 // ---------------------------------------------------------------------------
@@ -101,6 +121,7 @@ impl MerchantRegistryContract {
             name: name.clone(),
             status: MerchantStatus::Active,
             kyc_verified: false,
+            fee_bps: DEFAULT_FEE_BPS,
         };
         env.storage().persistent().set(&key, &record);
 
@@ -168,6 +189,34 @@ impl MerchantRegistryContract {
         );
     }
 
+    /// Permanently terminate a merchant.  Callable by admin only.
+    /// Unlike suspension, termination is irreversible: a terminated
+    /// merchant can never be reactivated (see `reactivate_merchant`) or
+    /// suspended again (see `suspend_merchant`).
+    pub fn terminate_merchant(env: Env, caller: Address, merchant: Address) {
+        caller.require_auth();
+        Self::require_admin(&env, &caller);
+
+        let key = DataKey::Merchant(merchant.clone());
+        let mut record: MerchantRecord = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .expect("Merchant not found");
+
+        if record.status == MerchantStatus::Terminated {
+            panic!("Merchant already terminated");
+        }
+
+        record.status = MerchantStatus::Terminated;
+        env.storage().persistent().set(&key, &record);
+
+        env.events().publish(
+            ("REGISTRY", "merchant_terminated"),
+            MerchantTerminatedEvent { merchant: merchant.clone() },
+        );
+    }
+
     /// Set the KYC verification status for a merchant.  Admin-only.
     pub fn set_kyc_status(env: Env, caller: Address, merchant: Address, verified: bool) {
         caller.require_auth();
@@ -186,6 +235,32 @@ impl MerchantRegistryContract {
         env.events().publish(
             ("REGISTRY", "kyc_status_updated"),
             KYCStatusUpdatedEvent { merchant: merchant.clone(), verified },
+        );
+    }
+
+    /// Set a merchant's negotiated fee rate, in basis points. Admin-only.
+    /// Panics if `fee_bps` exceeds `MAX_FEE_BPS` (1000 bps / 10%).
+    pub fn update_fee_tier(env: Env, caller: Address, merchant: Address, fee_bps: u32) {
+        caller.require_auth();
+        Self::require_admin(&env, &caller);
+
+        if fee_bps > MAX_FEE_BPS {
+            panic!("fee_bps exceeds maximum of 1000");
+        }
+
+        let key = DataKey::Merchant(merchant.clone());
+        let mut record: MerchantRecord = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .expect("Merchant not found");
+
+        record.fee_bps = fee_bps;
+        env.storage().persistent().set(&key, &record);
+
+        env.events().publish(
+            ("REGISTRY", "fee_tier_updated"),
+            FeeTierUpdatedEvent { merchant: merchant.clone(), fee_bps },
         );
     }
 
@@ -219,6 +294,12 @@ impl MerchantRegistryContract {
         }
         let record: MerchantRecord = env.storage().persistent().get(&key).unwrap();
         record.kyc_verified
+    }
+
+    /// Returns the merchant's current fee rate in basis points.
+    /// Panics if the merchant is not registered.
+    pub fn get_fee_tier(env: Env, merchant: Address) -> u32 {
+        Self::get_merchant(env, merchant).fee_bps
     }
 
     pub fn get_admin(env: Env) -> Address {

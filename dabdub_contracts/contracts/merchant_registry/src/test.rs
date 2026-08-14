@@ -133,6 +133,99 @@ fn test_reactivate_already_active() {
 }
 
 // ---------------------------------------------------------------------------
+// terminate_merchant
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_terminate_merchant_from_active() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&admin, &merchant);
+
+    let record = client.get_merchant(&merchant);
+    assert_eq!(record.status, MerchantStatus::Terminated);
+}
+
+#[test]
+fn test_terminate_merchant_from_suspended() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.suspend_merchant(&admin, &merchant);
+    client.terminate_merchant(&admin, &merchant);
+
+    let record = client.get_merchant(&merchant);
+    assert_eq!(record.status, MerchantStatus::Terminated);
+}
+
+#[test]
+fn test_is_merchant_active_returns_false_after_termination() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&admin, &merchant);
+
+    assert!(!client.is_merchant_active(&merchant));
+}
+
+#[test]
+#[should_panic(expected = "Not admin")]
+fn test_terminate_unauthorized() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+    let attacker = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&attacker, &merchant);
+}
+
+#[test]
+#[should_panic(expected = "Merchant not found")]
+fn test_terminate_unknown_merchant() {
+    let (env, client, admin) = setup();
+    let unknown = Address::generate(&env);
+
+    client.terminate_merchant(&admin, &unknown);
+}
+
+#[test]
+#[should_panic(expected = "Merchant already terminated")]
+fn test_terminate_already_terminated() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&admin, &merchant);
+    client.terminate_merchant(&admin, &merchant);
+}
+
+#[test]
+#[should_panic(expected = "Cannot reactivate terminated merchant")]
+fn test_reactivate_after_termination_fails() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&admin, &merchant);
+    client.reactivate_merchant(&admin, &merchant);
+}
+
+#[test]
+#[should_panic(expected = "Merchant is terminated")]
+fn test_suspend_after_termination_fails() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.terminate_merchant(&admin, &merchant);
+    client.suspend_merchant(&admin, &merchant);
+}
+
+// ---------------------------------------------------------------------------
 // transfer_admin
 // ---------------------------------------------------------------------------
 

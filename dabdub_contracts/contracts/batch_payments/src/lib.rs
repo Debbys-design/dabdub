@@ -124,7 +124,7 @@ impl BatchPaymentContract {
                 panic!("payment amount outside configured limits");
             }
             if item.memo.len() == 0 {
-                panic!("payment at index {}: memo must not be empty");
+                panic!("payment at index {}: memo must not be empty", i);
             }
         }
 
@@ -137,9 +137,10 @@ impl BatchPaymentContract {
             // Derive a deterministic payment ID from ledger sequence + batch index.
             // In production this would be a proper UUID or hash of inputs.
             let seed: u64 = (env.ledger().sequence() as u64) * 1000 + i as u64;
-            let id_bytes: BytesN<32> = env.crypto().sha256(
-                &soroban_sdk::Bytes::from_slice(&env, &seed.to_be_bytes()),
-            );
+            let id_bytes: BytesN<32> = env
+                .crypto()
+                .sha256(&soroban_sdk::Bytes::from_slice(&env, &seed.to_be_bytes()))
+                .into();
 
             // Emit PaymentCreated event — one per batch entry.
             env.events().publish(
