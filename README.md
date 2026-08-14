@@ -11,7 +11,7 @@ This repository contains the Soroban (Stellar smart contract platform) contracts
 
 ## Contracts
 
-All contracts live under [`dabdub_contracts/contracts/`](dabdub_contracts/contracts/):
+All contracts live under [`dupdapp_contract/contracts/`](dupdapp_contract/contracts/):
 
 | Contract | Purpose |
 |---|---|
@@ -51,10 +51,10 @@ make check-wasm-size    # enforce the 64 KB per-contract WASM limit
 make test               # cargo test across the workspace
 ```
 
-Or directly with cargo, from `dabdub_contracts/`:
+Or directly with cargo, from `dupdapp_contract/`:
 
 ```bash
-cd dabdub_contracts
+cd dupdapp_contract
 cargo build --target wasm32v1-none --release
 cargo test
 ```
@@ -75,5 +75,5 @@ Grafana/Loki/Promtail configs under [`grafana/`](grafana/) and [`docker-compose.
 
 ## Links
 
-- **Website**: [https://dabdub.xyz](https://dabdub.xyz)
-- **Documentation**: [https://docs.dabdub.xyz](https://docs.dabdub.xyz)
+- **Website**: [https://dupdub.xyz](https://dupdub.xyz)
+- **Documentation**: [https://docs.dupdub.xyz](https://docs.dupdub.xyz)
