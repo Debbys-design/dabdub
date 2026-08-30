@@ -285,6 +285,18 @@ impl MerchantRegistryContract {
         record.status == MerchantStatus::Active
     }
 
+    /// Returns `true` when the merchant is registered, Active, and KYC verified.
+    /// Used by callers (e.g. payment_escrow) to gate deposits on merchant approval.
+    /// Returns `false` for unregistered merchants.
+    pub fn is_approved(env: Env, merchant: Address) -> bool {
+        let key = DataKey::Merchant(merchant);
+        if !env.storage().persistent().has(&key) {
+            return false;
+        }
+        let record: MerchantRecord = env.storage().persistent().get(&key).unwrap();
+        record.status == MerchantStatus::Active && record.kyc_verified
+    }
+
     /// Returns `true` when the merchant is KYC verified.
     /// Returns `false` for unregistered merchants.
     pub fn is_kyc_verified(env: Env, merchant: Address) -> bool {
