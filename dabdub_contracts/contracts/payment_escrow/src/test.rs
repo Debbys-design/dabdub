@@ -1231,3 +1231,67 @@ fn test_emergency_drain_cooldown_prevents_repeated_drain() {
         &emergency_signer_two,
     );
 }
+
+#[test]
+fn test_dispute_after_partial_release_resolves_to_customer() {
+    let (env, client, contract_id, admin, customer, merchant, usdc, ..) = setup_env();
+    let payment_id = make_id(&env, 55);
+
+    deposit_default_ttl(&client, &customer, &payment_id, &merchant, 250_000_000i128);
+
+    client.release_partial(&admin, &payment_id, &100_000_000i128);
+
+    let payment = client.get_payment(&payment_id);
+    assert_eq!(payment.status, PaymentStatus::Pending);
+    assert_eq!(payment.released_amount, 100_000_000);
+    assert_eq!(client.get_balance(&payment_id), 150_000_000);
+
+    client.dispute(
+        &customer,
+        &payment_id,
+        &String::from_str(&env, "unsatisfactory delivery"),
+    );
+
+    client.resolve_dispute(&admin, &payment_id, &customer);
+
+    let payment = client.get_payment(&payment_id);
+    assert_eq!(payment.status, PaymentStatus::Expired);
+    assert_eq!(payment.released_amount, 250_000_000);
+
+    let token_client = token::Client::new(&env, &usdc);
+    assert_eq!(token_client.balance(&customer), 1_000_000_000);
+    assert_eq!(token_client.balance(&merchant), 100_000_000);
+    assert_eq!(token_client.balance(&contract_id), 0);
+}
+
+#[test]
+fn test_dispute_after_partial_release_resolves_to_merchant() {
+    let (env, client, contract_id, admin, customer, merchant, usdc, ..) = setup_env();
+    let payment_id = make_id(&env, 56);
+
+    deposit_default_ttl(&client, &customer, &payment_id, &merchant, 250_000_000i128);
+
+    client.release_partial(&admin, &payment_id, &100_000_000i128);
+
+    let payment = client.get_payment(&payment_id);
+    assert_eq!(payment.status, PaymentStatus::Pending);
+    assert_eq!(payment.released_amount, 100_000_000);
+    assert_eq!(client.get_balance(&payment_id), 150_000_000);
+
+    client.dispute(
+        &merchant,
+        &payment_id,
+        &String::from_str(&env, "customer objection to chargeback"),
+    );
+
+    client.resolve_dispute(&admin, &payment_id, &merchant);
+
+    let payment = client.get_payment(&payment_id);
+    assert_eq!(payment.status, PaymentStatus::Released);
+    assert_eq!(payment.released_amount, 250_000_000);
+
+    let token_client = token::Client::new(&env, &usdc);
+    assert_eq!(token_client.balance(&customer), 750_000_000);
+    assert_eq!(token_client.balance(&merchant), 250_000_000);
+    assert_eq!(token_client.balance(&contract_id), 0);
+}
