@@ -12,6 +12,7 @@ enum DataKey {
     Admin,
     MinAmount,
     MaxAmount,
+    Counter,
 }
 
 /// A single payment input in the batch.
@@ -58,6 +59,7 @@ impl BatchPaymentContract {
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::MinAmount, &min_amount);
         env.storage().instance().set(&DataKey::MaxAmount, &max_amount);
+        env.storage().instance().set(&DataKey::Counter, &0u64);
     }
 
     /// Update payment amount limits. Admin-only.
@@ -130,16 +132,20 @@ impl BatchPaymentContract {
 
         // ── Creation pass ─────────────────────────────────────────────────────
         let mut payment_ids: Vec<BytesN<32>> = vec![&env];
+        let counter: u64 = env.storage().instance().get(&DataKey::Counter).unwrap();
 
         for i in 0..count {
             let item = payments.get(i).unwrap();
 
-            // Derive a deterministic payment ID from ledger sequence + batch index.
-            // In production this would be a proper UUID or hash of inputs.
-            let seed: u64 = (env.ledger().sequence() as u64) * 1000 + i as u64;
+            let new_counter = counter + i as u64;
+            let mut seed_bytes = soroban_sdk::vec![&env];
+            seed_bytes.extend_from_array(&(env.ledger().sequence() as u64).to_be_bytes());
+            seed_bytes.extend_from_array(&new_counter.to_be_bytes());
+            seed_bytes.extend_from_array(&merchant.clone().to_xdr(&env).to_bytes().as_ref());
+
             let id_bytes: BytesN<32> = env
                 .crypto()
-                .sha256(&soroban_sdk::Bytes::from_slice(&env, &seed.to_be_bytes()))
+                .sha256(&seed_bytes)
                 .into();
 
             // Emit PaymentCreated event — one per batch entry.
@@ -150,6 +156,9 @@ impl BatchPaymentContract {
 
             payment_ids.push_back(id_bytes);
         }
+
+        let final_counter = counter + count as u64;
+        env.storage().instance().set(&DataKey::Counter, &final_counter);
 
         payment_ids
     }

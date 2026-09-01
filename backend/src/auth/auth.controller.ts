@@ -1,31 +1,40 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { AuthTokenResponseDto } from './dto/auth-token-response.dto';
 
-@Controller('api/v1/auth')
+@ApiTags('auth')
+@Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
-  /** Issue #589 — POST /api/v1/auth/login */
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new merchant' })
+  @ApiCreatedResponse({ type: AuthTokenResponseDto })
+  @ApiBadRequestResponse({ description: 'Validation failed (weak password, invalid email)' })
+  @ApiConflictResponse({ description: 'Email already registered' })
+  register(@Body() dto: RegisterDto): Promise<AuthTokenResponseDto> {
+    return this.authService.register(dto);
+  }
+
   @Post('login')
-  login(@Body() body: { email: string; password: string }) {
-    return this.auth.login(body.email, body.password);
-  }
-
-  /** Issue #590 — POST /api/v1/auth/refresh */
-  @Post('refresh')
-  refresh(@Body() body: { refreshToken: string }) {
-    return this.auth.refresh(body.refreshToken);
-  }
-
-  /** Issue #592 — GET /api/v1/auth/verify-email?token=xxx */
-  @Get('verify-email')
-  verifyEmail(@Query('token') token: string) {
-    return this.auth.verifyEmail(token);
-  }
-
-  /** Issue #592 — POST /api/v1/auth/resend-verification */
-  @Post('resend-verification')
-  resendVerification(@Body() body: { email: string }) {
-    return this.auth.resendVerification(body.email);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Merchant login' })
+  @ApiOkResponse({ type: AuthTokenResponseDto })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  login(@Body() dto: LoginDto): Promise<AuthTokenResponseDto> {
+    return this.authService.login(dto);
   }
 }
