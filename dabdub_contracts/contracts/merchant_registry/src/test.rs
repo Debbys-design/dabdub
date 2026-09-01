@@ -371,6 +371,47 @@ fn test_get_merchant_includes_kyc_field() {
 }
 
 // ---------------------------------------------------------------------------
+// is_approved
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_is_approved_false_until_kyc_verified() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    assert!(!client.is_approved(&merchant));
+}
+
+#[test]
+fn test_is_approved_true_when_active_and_kyc_verified() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.set_kyc_status(&admin, &merchant, &true);
+    assert!(client.is_approved(&merchant));
+}
+
+#[test]
+fn test_is_approved_false_when_suspended_even_if_kyc_verified() {
+    let (env, client, admin) = setup();
+    let merchant = Address::generate(&env);
+
+    client.register_merchant(&admin, &merchant, &sample_name(&env));
+    client.set_kyc_status(&admin, &merchant, &true);
+    client.suspend_merchant(&admin, &merchant);
+    assert!(!client.is_approved(&merchant));
+}
+
+#[test]
+fn test_is_approved_false_for_unknown() {
+    let (env, client, _admin) = setup();
+    let unknown = Address::generate(&env);
+    assert!(!client.is_approved(&unknown));
+}
+
+// ---------------------------------------------------------------------------
 // update_fee_tier / get_fee_tier
 // ---------------------------------------------------------------------------
 
